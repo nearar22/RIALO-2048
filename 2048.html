@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>2048 - Rialo</title>
+<style>
+  body {
+    font-family: Arial, sans-serif;
+    background: linear-gradient(135deg, #4b3b3b, #1c1c1c);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    margin: 0;
+    color: #f3f3f3;
+    position: relative;
+  }
+  .container {
+    text-align: center;
+    background: rgba(75, 59, 59, 0.85);
+    padding: 25px;
+    border-radius: 20px;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.7);
+    position: relative;
+    z-index: 1;
+  }
+  h1 { margin: 0; font-size: 60px; color: #e0b084; text-shadow: 2px 2px #1c1c1c; }
+  h2 { margin: 0; font-size: 50px; color: #d1a06c; font-weight: bold; }
+  #scoreBoard { margin: 10px 0; font-size: 18px; color: #e0b084; }
+  #grid {
+    display: grid;
+    grid-template-columns: repeat(4, 100px);
+    grid-template-rows: repeat(4, 100px);
+    gap: 12px;
+    background: rgba(65, 50, 50, 0.8);
+    padding: 12px;
+    border-radius: 15px;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.7);
+    margin-bottom: 20px;
+  }
+  .cell {
+    width: 100px; height: 100px;
+    display: flex; justify-content: center; align-items: center;
+    font-size: 28px; font-weight: bold; border-radius: 12px;
+    transition: all 0.3s ease;
+    box-shadow: inset 0 0 5px rgba(0,0,0,0.5); transform: scale(1);
+  }
+  .cell.new { animation: pop 0.3s ease; }
+  @keyframes pop { 0% { transform: scale(0); } 50% { transform: scale(1.2); } 100% { transform: scale(1); } }
+  #tag { font-size: 18px; color: #e0b084; margin-top: 5px; font-weight: bold; }
+
+  /* Overlay */
+  #overlay {
+    display: none;
+    position: absolute; top:0; left:0;
+    width:100%; height:100%;
+    background: rgba(0,0,0,0.6);
+    display: flex; justify-content: center; align-items: center;
+    flex-direction: column;
+    z-index: 10;
+  }
+  #overlayMessage {
+    color:#ff595e;
+    font-size: 36px;
+    font-weight: bold;
+    padding: 20px 40px;
+    background: #1c1c1c;
+    border-radius: 15px;
+    margin-bottom: 20px;
+    transform: scale(0);
+    animation: pop 0.5s ease forwards;
+  }
+  #overlay button {
+    background: #e0b084; color: #1c1c1c; border: none;
+    padding: 12px 25px; font-size: 16px; font-weight: bold;
+    border-radius: 10px; cursor: pointer; box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+    transition: all 0.2s ease;
+  }
+  #overlay button:hover { background: #d1a06c; }
+</style>
+</head>
+<body>
+  <div class="container">
+    <!-- Logo added next to Rialo -->
+    <div style="display:flex; align-items:center; justify-content:center; gap:10px; margin-bottom:10px;">
+      <img src="https://pbs.twimg.com/profile_images/1950265537784926208/qbjSWMDP_400x400.jpg" alt="Rialo Logo" style="width:50px; height:50px; border-radius:50%;">
+      <h2>Rialo</h2>
+    </div>
+    <h1>2048</h1>
+    <div id="scoreBoard">Score: 0 | Top Score: 0</div>
+    <div id="grid"></div>
+    <div id="tag">
+      created by <a href="https://x.com/CNFTNEROO" target="_blank" style="color:#e0b084; font-weight:bold; text-decoration:none;">@CNFTNEROO</a>
+    </div>
+  </div>
+
+  <div id="overlay">
+    <div id="overlayMessage">Game Over!</div>
+    <button id="restartOverlayBtn">Restart Game</button>
+  </div>
+
+<script>
+const grid = document.getElementById('grid');
+const overlay = document.getElementById('overlay');
+const restartOverlayBtn = document.getElementById('restartOverlayBtn');
+const scoreBoard = document.getElementById('scoreBoard');
+
+let cells = [];
+let score = 0;
+let topScore = 0;
+
+const colors = {
+  2:'#d1a06c',4:'#e3b27a',8:'#b88b6c',16:'#a67c52',
+  32:'#8b5e3c',64:'#5c3a21',128:'#4b3b3b',256:'#3a2a2a',
+  512:'#1c1c1c',1024:'#101010',2048:'#000000'
+};
+
+function createBoard(){
+  grid.innerHTML=''; cells=[]; overlay.style.display='none'; score=0;
+  updateScore();
+  for(let i=0;i<16;i++){
+    let cell=document.createElement('div'); cell.classList.add('cell');
+    grid.appendChild(cell); cells.push(cell);
+  }
+  generate(); generate(); updateColors();
+}
+
+function generate(){
+  let empty=cells.filter(c=>c.innerHTML==='');
+  if(empty.length===0) return;
+  let randomCell=empty[Math.floor(Math.random()*empty.length)];
+  randomCell.innerHTML=Math.random()<0.9?2:4;
+  randomCell.classList.add('new');
+  setTimeout(()=>randomCell.classList.remove('new'),300);
+  updateColors();
+}
+
+function slideAndCombine(arr){
+  let newArr=arr.filter(v=>v!==0);
+  for(let i=0;i<newArr.length-1;i++){
+    if(newArr[i]===newArr[i+1]){
+      newArr[i]*=2;
+      score+=newArr[i];
+      if(score>topScore) topScore=score;
+      newArr[i+1]=0;
+    }
+  }
+  newArr=newArr.filter(v=>v!==0);
+  while(newArr.length<4) newArr.push(0);
+  return newArr;
+}
+
+function move(direction){
+  let moved=false;
+  let values=cells.map(c=>c.innerHTML===''?0:parseInt(c.innerHTML));
+  let newValues=Array(16).fill(0);
+
+  if(direction==='left'){
+    for(let r=0;r<4;r++){
+      let row=values.slice(r*4,r*4+4);
+      let newRow=slideAndCombine(row);
+      for(let c=0;c<4;c++) newValues[r*4+c]=newRow[c];
+    }
+  } else if(direction==='right'){
+    for(let r=0;r<4;r++){
+      let row=values.slice(r*4,r*4+4).reverse();
+      let newRow=slideAndCombine(row).reverse();
+      for(let c=0;c<4;c++) newValues[r*4+c]=newRow[c];
+    }
+  } else if(direction==='up'){
+    for(let c=0;c<4;c++){
+      let col=[values[c],values[c+4],values[c+8],values[c+12]];
+      let newCol=slideAndCombine(col);
+      for(let r=0;r<4;r++) newValues[c+r*4]=newCol[r];
+    }
+  } else if(direction==='down'){
+    for(let c=0;c<4;c++){
+      let col=[values[c],values[c+4],values[c+8],values[c+12]].reverse();
+      let newCol=slideAndCombine(col).reverse();
+      for(let r=0;r<4;r++) newValues[c+r*4]=newCol[r];
+    }
+  }
+
+  if(JSON.stringify(values)!==JSON.stringify(newValues)) moved=true;
+  for(let i=0;i<16;i++) cells[i].innerHTML=newValues[i]===0?'':newValues[i];
+  if(moved) generate();
+  updateColors();
+  updateScore();
+  if(!canMove()) overlay.style.display='flex';
+}
+
+function updateColors(){
+  for(let cell of cells){
+    const val=parseInt(cell.innerHTML);
+    cell.style.background=colors[val]||'#e0b084';
+    if(val>=512){ 
+      cell.style.color='#ffffff';
+    } else {
+      cell.style.color='#1c1c1c';
+    }
+  }
+}
+
+function updateScore(){
+  scoreBoard.textContent=`Score: ${score} | Top Score: ${topScore}`;
+}
+
+function canMove(){
+  let values=cells.map(c=>c.innerHTML===''?0:parseInt(c.innerHTML));
+  for(let r=0;r<4;r++){ for(let c=0;c<3;c++) if(values[r*4+c]===values[r*4+c+1]||values[r*4+c]===0||values[r*4+c+1]===0) return true; }
+  for(let c=0;c<4;c++){ for(let r=0;r<3;r++) if(values[r*4+c]===values[(r+1)*4+c]||values[r*4+c]===0||values[(r+1)*4+c]===0) return true; }
+  return false;
+}
+
+document.addEventListener('keydown', e=>{
+  const key=e.key.toLowerCase();
+  if(key==='a'||e.key==='ArrowLeft') move('left');
+  if(key==='d'||e.key==='ArrowRight') move('right');
+  if(key==='w'||e.key==='ArrowUp') move('up');
+  if(key==='s'||e.key==='ArrowDown') move('down');
+});
+
+restartOverlayBtn.addEventListener('click', createBoard);
+
+createBoard();
+</script>
+</body>
+</html>
